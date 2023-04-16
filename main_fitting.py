@@ -1,39 +1,36 @@
 import sys
-import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QGridLayout, QWidget, QPushButton, QFileDialog, QLineEdit, QMessageBox,QComboBox
-from PyQt5.QtGui import QIcon, QPalette, QColor,QBrush,QPixmap
+from PyQt5.QtGui import QIcon, QPalette, QColor,QBrush,QPixmap,QCursor
 from PyQt5.QtCore import Qt
-import json
-import csv
-import os.path as path
-import fitting_functions
+from fitting_functions import *
 import interpolation_functions
+import os.path as path
+import pandas as pd
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        MainWindow.least_squares=fitting_functions.least_squares
-        MainWindow.gaussian=fitting_functions.gaussian
-        MainWindow.lorentzian=fitting_functions.lorentzian
-        MainWindow.voigt=fitting_functions.voigt
-        MainWindow.fit_gaussian=fitting_functions.fit_gaussian
-        MainWindow.fit_lorentzian=fitting_functions.fit_lorentzian
-        MainWindow.fit_voigt=fitting_functions.fit_voigt
+        MainWindow.least_squares=least_squares
+        MainWindow.fit_gaussian=fit_gaussian
+        MainWindow.fit_lorentzian=fit_lorentzian
+        MainWindow.fit_voigt=fit_voigt
         MainWindow.def1=interpolation_functions.def1
         MainWindow.newton1=interpolation_functions.newton1
         MainWindow.newton2=interpolation_functions.newton2
         # Set window properties
         self.setWindowTitle("Fitting")
+        self.setStyleSheet("*{font-size:16px;}QPushButton:disabled{background-color:grey;}QLineEdit:disabled{background-color:lightgrey}")
+
         self.setWindowIcon(QIcon("./assets/icon.png"))
         # Load the background image
-        background_image = QPixmap("./assets/background.jpg")
-        # Create a palette for the QMainWindow
-        palette = QPalette()
-        palette.setBrush(QPalette.Background, QBrush(background_image))
-        self.setPalette(palette)
+        # background_image = QPixmap("./assets/background.jpg")
+        # # Create a palette for the QMainWindow
+        # palette = QPalette()
+        # palette.setBrush(QPalette.Background, QBrush(background_image))
+        # self.setPalette(palette)
 
         self.setGeometry(100, 100, 800, 600)
 
@@ -45,9 +42,10 @@ class MainWindow(QMainWindow):
         # Create labels and line edits for file input
         file_label = QLabel("Choose JSON or CSV File:")
         self.file_edit = QLineEdit()
-        # self.file_edit.setReadOnly(True)
+        self.file_edit.setReadOnly(True)
         file_button = QPushButton("Browse")
         file_button.clicked.connect(self.browse_file)
+        file_button.setCursor(QCursor(Qt.PointingHandCursor))
 
         # Create labels and line edits for plot input
         title_label = QLabel("Graph title:")
@@ -59,6 +57,7 @@ class MainWindow(QMainWindow):
         fitting_method_label=QLabel("Fitting method:")
         self.fitting_method_edit=QComboBox()
         self.fitting_method_edit.addItems(["Least squares","Gaussian(normal) distribution","Lorentzian distribution","Voigt distribution"])
+        self.fitting_method_edit.currentIndexChanged.connect(self.remove_interpolation)
         experiment_label=QLabel("Experiment:")
         self.experiment_edit=QComboBox()
         self.experiment_edit.addItems(["","Simple pendulum","Hooke's law"])
@@ -66,10 +65,12 @@ class MainWindow(QMainWindow):
         # Create buttons for plot and interpolation
         plot_button = QPushButton("Plot")
         plot_button.clicked.connect(self.plot)
-        interp_button = QPushButton("Interpolate")
-        interp_button.clicked.connect(self.interpolate)
+        plot_button.setCursor(QCursor(Qt.PointingHandCursor))
+        self.interp_button = QPushButton("Interpolate")
+        self.interp_button.clicked.connect(self.interpolate)
+        self.interp_button.setCursor(QCursor(Qt.PointingHandCursor))
         # Create label for interpolation input
-        interp_label = QLabel("Interpolation Value:")
+        self.interp_label = QLabel("Interpolation Value:")
         self.interp_edit = QLineEdit()
 
         # Create label for results
@@ -93,8 +94,8 @@ class MainWindow(QMainWindow):
         self.grid_layout.addWidget(experiment_label, 3, 2)
         self.grid_layout.addWidget(self.experiment_edit, 3, 3)
         self.grid_layout.addWidget(plot_button, 4, 0)
-        self.grid_layout.addWidget(interp_button, 4, 1)
-        self.grid_layout.addWidget(interp_label, 4, 2)
+        self.grid_layout.addWidget(self.interp_button, 4, 1)
+        self.grid_layout.addWidget(self.interp_label, 4, 2)
         self.grid_layout.addWidget(self.interp_edit, 4, 3)
         self.grid_layout.addWidget(self.result_label, 6, 0, 1, 5,Qt.AlignCenter)
 
@@ -102,52 +103,51 @@ class MainWindow(QMainWindow):
         # Open file dialog and get selected file path
         file_path,_= QFileDialog.getOpenFileName(self, "Open JSON or CSV File", "./data_sets", "JSON or CSV Files (*.json  *.csv)")
         if file_path:
-            # Read JSON file and set default input values
             file_ext = path.splitext(file_path)[1]
-            with open(file_path) as file:
-                self.file={}
-                self.file["title"]=""
-                self.file["xlabel"]=""
-                self.file["ylabel"]=""
-                if(file_ext==".csv"):
-                    reader = csv.reader(file)
-                    next(reader)
-                    after_header=next(reader)
-                    x_list = [float(after_header[0])]
-                    y_list = [float(after_header[1])]
-                    try:
-                        self.file["title"]=after_header[2]
-                        self.file["xlabel"]=after_header[3]
-                        self.file["ylabel"]=after_header[4]
-                    except IndexError:
-                        # if the file hasn't any of title ,xlabel or ylabel
-                        pass
+            # Read  file and set default input values
+            if(file_ext==".csv"):
+                file= pd.read_csv(file_path)
+            elif(file_ext==".json"):
+                file= pd.read_json(file_path)
 
-                    # read each row and append values to the x and y lists
-                    for row in reader:
-                        x_list.append(float(row[0]))
-                        y_list.append(float(row[1]))
-                    self.file["x"] = x_list
-                    self.file["y"] = y_list
-                elif(file_ext==".json"):
-                    self.file = json.load(file)
-                
-                try:
-                    self.title_edit.setText(self.file["title"])
-                    self.xlabel_edit.setText(self.file["xlabel"])
-                    self.ylabel_edit.setText(self.file["ylabel"])
-                    for i in range(self.experiment_edit.count()):
-                        if(self.file["title"]==self.experiment_edit.itemText(i)):
-                            self.experiment_edit.setCurrentIndex(i)
-                except KeyError:
-                    # if the file hasn't any of title ,xlabel or ylabel
-                    pass
-                self.x = np.array(self.file['x'])
-                self.y = np.array(self.file['y'])
-                self.n = len(self.x)
+            try:
+                title=file['title'][0]
+                self.title_edit.setText(title)
+                for i in range(self.experiment_edit.count()):
+                    if(self.experiment_edit.itemText(i)==title):
+                        self.experiment_edit.setCurrentIndex(i)
+            except KeyError:
+                self.title_edit.setText("")
+                self.experiment_edit.setCurrentIndex(0)
+            
+            try:
+                xlabel=file['xlabel'][0]
+                self.xlabel_edit.setText(xlabel)
+            except KeyError:
+                self.xlabel_edit.setText("")
+            
+            try:
+                ylabel=file['ylabel'][0]
+                self.ylabel_edit.setText(ylabel)
+            except KeyError:
+                self.ylabel_edit.setText("")
+
+
+            try:
+                self.x = file['x']
+                self.y = file['y']
+            except KeyError as error:
+                self.title_edit.setText("")
+                self.experiment_edit.setCurrentIndex(0)
+                self.xlabel_edit.setText("")
+                self.ylabel_edit.setText("")
+                QMessageBox.warning(self, "Data error", f"Please provide a valid {error} column name in the chosen file .")
+                return
+
+            self.n = len(self.x)
             self.file_edit.setText(file_path)
 
-    def shared_plot(self,interp_value=False):
+    def shared_plot(self,interp_value=None):
         # Get input values
         filename = self.file_edit.text()
         xlabel = self.xlabel_edit.text()
@@ -155,27 +155,35 @@ class MainWindow(QMainWindow):
         title = self.title_edit.text()
         self.setWindowTitle(title)
 
+
         # Check if all input values are provided
         if not all([filename, xlabel, ylabel, title]):
             QMessageBox.warning(self, "Error", "Please provide all input values.")
             return
         experiment=self.select_fitting_method()
         self.result = f"{self.add_experiment_result()}"
+        
 
         # Clear previous plot and draw new plot on canvas
         self.canvas.figure.clear()
         ax = self.canvas.figure.add_subplot(111)
-        ax.plot(experiment.x, experiment.y_fit, color="blue",label="After Fitting")
-        ax.plot(experiment.x, experiment.y, marker="o", color="orange", linestyle=" ",label="Before Fitting")
+        ax.scatter(experiment.x, experiment.y,label="Before fitting")
+        ax.plot(experiment.x_smooth, experiment.y_fit,'r-',label=experiment.after_fitting_label)
+        # Clear previous result label and write new text in it
+        self.result_label.setText("")
+        self.result_label.setStyleSheet("background:transparent;")
         # Plot cut part point
-        ax.plot(0, experiment.c, "h m")
-        ax.text(0, experiment.c, f"Cut point")
+        if(self.fitting_method_edit.currentText()=="Least squares"):
+            ax.plot(0, experiment.c, "h m")
+            ax.text(0, experiment.c, f"Cut point")
+            self.result_label.setStyleSheet("background:darkgreen;color:white;padding:5px 50px;font-size:16px;")
+            self.result_label.setText(self.result)
         ax.legend(loc="best")
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.set_title(title)
         ax.grid()
-        if(interp_value):
+        if(interp_value != None):
             # Zoom in to show the interpolated/extrapolated point
             if interp_value >= min(experiment.x) and interp_value < (max(experiment.x)-3):
                 ax.set_xlim(0, max(experiment.x))
@@ -195,10 +203,8 @@ class MainWindow(QMainWindow):
                 ax.text(interp_value, experiment.newton2(interp_value), f"Extrapolation point")
             self.result = f"{self.result}\n{interpolation_text}"
 
-        self.result_label.setStyleSheet("background:darkgreen;color:white;padding:5px 50px;font-size:16px;")
         self.grid_layout.addWidget(self.canvas, 5, 0, 1, 5)
         self.canvas.draw()
-        self.result_label.setText(self.result)
 
     def plot(self):
         self.shared_plot()
@@ -213,31 +219,44 @@ class MainWindow(QMainWindow):
             return
         self.shared_plot(interp_value)
 
+    def remove_interpolation(self):
+        if(self.fitting_method_edit.currentText()=="Least squares"):
+            self.interp_button.setEnabled(True)
+            self.interp_edit.setEnabled(True)
+        else:
+            self.interp_button.setEnabled(False)
+            self.interp_edit.setEnabled(False)
+
 
     def select_fitting_method(self):
         current_method = self.fitting_method_edit.currentText()
 
         if current_method == "Least squares":
-            self.least_squares()         
+            self.least_squares()    
+            self.after_fitting_label="Least squares fit"     
         elif current_method == "Gaussian(normal) distribution":
             self.fit_gaussian()
+            self.after_fitting_label="Gaussian fit"     
         elif current_method == "Lorentzian distribution":
             self.fit_lorentzian()
+            self.after_fitting_label="Lorentzian fit"     
         elif current_method == "Voigt distribution":
             self.fit_voigt()
+            self.after_fitting_label="Voigt fit"     
 
         return self
     
     def add_experiment_result(self):
         current_experiment=self.experiment_edit.currentText()
         result=""
-        if(current_experiment=="Simple pendulum"):
-            g = 4*(np.pi**2)/self.m
-            result=f"Slope = {self.m} s2/cm\nCut part = {self.c:.5f} s2\nEarth gravitational acceleration = {g} cm/s2"
-        elif(current_experiment=="Hooke's law"):
-            result=f"Slope = {self.m} s2/gm\nCut part = {self.c:.5f} cm"
-        else:
-            result=f"Slope = {self.m}\nCut part = {self.c:.5f}"
+        if(self.fitting_method_edit.currentText()=="Least squares"):
+            if(current_experiment=="Simple pendulum"):
+                g = 4*(np.pi**2)/self.m
+                result=f"Slope = {self.m} s2/cm\nCut part = {self.c:.5f} s2\nEarth gravitational acceleration = {g} cm/s2"
+            elif(current_experiment=="Hooke's law"):
+                result=f"Slope = {self.m} s2/gm\nCut part = {self.c:.5f} cm"
+            else:
+                result=f"Slope = {self.m}\nCut part = {self.c:.5f}"
         return result
 
 if __name__ == "__main__":

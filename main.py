@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import sys
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -13,6 +15,7 @@ import pandas as pd
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.app_dir=path.dirname(__file__)
         MainWindow.least_squares=least_squares
         MainWindow.fit_gaussian=fit_gaussian
         MainWindow.fit_lorentzian=fit_lorentzian
@@ -22,15 +25,26 @@ class MainWindow(QMainWindow):
         MainWindow.newton2=interpolation_functions.newton2
         # Set window properties
         self.setWindowTitle("Fitting")
-        self.setStyleSheet("*{font-size:16px;}QPushButton:disabled{background-color:grey;}QLineEdit:disabled{background-color:lightgrey}")
+        self.setStyleSheet("""
+        *{
+            font-size:16px;
+        }
+        QPushButton:disabled{
+            background-color:grey;
+        }
+        QLineEdit:disabled{
+            background-color:lightgrey
+        }
+        QMainWindow{
+            background:rgb(245,245,245);
+        }
+        QPushButton::hover{
+        background:green
+        }
 
-        self.setWindowIcon(QIcon("./assets/icon.png"))
-        # Load the background image
-        # background_image = QPixmap("./assets/background.jpg")
-        # # Create a palette for the QMainWindow
-        # palette = QPalette()
-        # palette.setBrush(QPalette.Background, QBrush(background_image))
-        # self.setPalette(palette)
+        """)
+
+        self.setWindowIcon(QIcon(path.join(self.app_dir,'assets','icon.png')))
 
         self.setGeometry(100, 100, 800, 720)
 
@@ -48,16 +62,16 @@ class MainWindow(QMainWindow):
         file_button.setCursor(QCursor(Qt.PointingHandCursor))
 
         # Create labels and line edits for plot input
-        title_label = QLabel("Graph title:")
+        title_label = QLabel("Graph Title:")
         self.title_edit = QLineEdit()
         xlabel_label = QLabel("X Label:")
         self.xlabel_edit = QLineEdit()
         ylabel_label = QLabel("Y Label:")
         self.ylabel_edit = QLineEdit()
-        fitting_method_label=QLabel("Fitting method:")
+        fitting_method_label=QLabel("Fitting Method:")
         self.fitting_method_edit=QComboBox()
         self.fitting_method_edit.addItems(["Least squares","Gaussian(normal) distribution","Lorentzian distribution","Voigt distribution"])
-        self.fitting_method_edit.currentIndexChanged.connect(self.remove_interpolation)
+        self.fitting_method_edit.currentIndexChanged.connect(self.disable_enable_interpolation)
         experiment_label=QLabel("Experiment:")
         self.experiment_edit=QComboBox()
         self.experiment_edit.addItems(["","Simple pendulum","Hooke's law"])
@@ -75,10 +89,10 @@ class MainWindow(QMainWindow):
         self.interp_edit.returnPressed.connect(self.interp_button.click)
 
         # Create slider for graph zoom
-        self.slider=QSlider(Qt.Horizontal,self)
+        self.slider=QSlider(Qt.Horizontal)
         self.slider.setRange(1,1000)
         self.slider.setValue(10)
-        self.slider.valueChanged.connect(self.graph_update_zoom)
+        self.slider.valueChanged.connect(self.graph_draw_zoom)
 
         # Create figure canvas for plot output
         self.canvas = FigureCanvas(plt.Figure())
@@ -104,12 +118,12 @@ class MainWindow(QMainWindow):
         self.grid_layout.addWidget(self.interp_button, 4, 1)
         self.grid_layout.addWidget(self.interp_label, 4, 2)
         self.grid_layout.addWidget(self.interp_edit, 4, 3)
-
-        self.grid_layout.addWidget(self.result_label, 7, 0, 1, 5,Qt.AlignCenter)
+        # Qt.AlignHCenter = Qt.AlignmentFlag.AlignHCenter
+        self.grid_layout.addWidget(self.result_label, 7, 0, 1, 5,Qt.AlignHCenter)
 
     def browse_file(self):
         # Open file dialog and get selected file path
-        file_path,_= QFileDialog.getOpenFileName(self, "Open JSON or CSV File", "./data_sets", "JSON or CSV Files (*.json  *.csv)")
+        file_path,_= QFileDialog.getOpenFileName(self, "Open JSON or CSV File", path.join(self.app_dir,'data_sets'), "JSON or CSV Files (*.json  *.csv)")
         if file_path:
             file_ext = path.splitext(file_path)[1]
             # Read  file and set default input values
@@ -193,7 +207,7 @@ class MainWindow(QMainWindow):
         self.max_x=max(*experiment.x,*experiment.x_smooth)
         self.min_y=min(*experiment.y,*experiment.y_fit)
         self.max_y=max(*experiment.y,*experiment.y_fit)
-        self.graph_zoom()
+
         self.ax.legend(loc="best")
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
@@ -216,7 +230,7 @@ class MainWindow(QMainWindow):
             self.result_label.setText(self.result)
 
         self.grid_layout.addWidget(self.slider, 5, 0, 1, 5)
-        self.canvas.draw()
+        self.graph_draw_zoom()
 
     def plot(self):
         self.shared_plot()
@@ -231,7 +245,7 @@ class MainWindow(QMainWindow):
             return
         self.shared_plot(interp_value)
 
-    def remove_interpolation(self):
+    def disable_enable_interpolation(self):
         if(self.fitting_method_edit.currentText()=="Least squares"):
             self.interp_button.setEnabled(True)
             self.interp_edit.setEnabled(True)
@@ -273,12 +287,10 @@ class MainWindow(QMainWindow):
             else:
                 result=f"Slope = {self.m}\nCut part = {self.c:.4f}"
         return result
-    def graph_zoom(self):
+    def graph_draw_zoom(self):
         lim_percentage=self.slider.value()/100
         self.ax.set_xlim(self.min_x-(self.max_x-self.min_x)*lim_percentage, self.max_x+(self.max_x-self.min_x)*lim_percentage)
         self.ax.set_ylim(self.min_y-(self.max_y-self.min_y)*lim_percentage, self.max_y+(self.max_y-self.min_y)*lim_percentage)
-    def graph_update_zoom(self):
-        self.graph_zoom()
         self.canvas.draw()
 
 

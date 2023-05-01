@@ -4,7 +4,7 @@ import sys
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QGridLayout, QWidget, QPushButton, QFileDialog, QLineEdit, QMessageBox,QComboBox,QSlider
-from PyQt5.QtGui import QIcon, QPalette, QColor,QBrush,QPixmap,QCursor
+from PyQt5.QtGui import QIcon, QPalette, QColor,QCursor
 from PyQt5.QtCore import Qt
 from fitting_functions import *
 import interpolation_functions
@@ -15,14 +15,17 @@ import pandas as pd
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+
         self.app_dir=path.dirname(__file__)
-        MainWindow.least_squares=least_squares
-        MainWindow.fit_gaussian=fit_gaussian
-        MainWindow.fit_lorentzian=fit_lorentzian
-        MainWindow.fit_voigt=fit_voigt
+
+        MainWindow.linear_fit=linear_fit
+        MainWindow.gaussian_fit=gaussian_fit
+        MainWindow.lorentzian_fit=lorentzian_fit
+        MainWindow.voigt_fit=voigt_fit
         MainWindow.def1=interpolation_functions.def1
         MainWindow.newton1=interpolation_functions.newton1
         MainWindow.newton2=interpolation_functions.newton2
+
         # Set window properties
         self.setWindowTitle("Fitting")
         self.setStyleSheet("""
@@ -45,7 +48,6 @@ class MainWindow(QMainWindow):
         """)
 
         self.setWindowIcon(QIcon(path.join(self.app_dir,'assets','icon.png')))
-
         self.setGeometry(100, 100, 800, 720)
 
         # Create central widget and grid layout
@@ -68,13 +70,24 @@ class MainWindow(QMainWindow):
         self.xlabel_edit = QLineEdit()
         ylabel_label = QLabel("Y Label:")
         self.ylabel_edit = QLineEdit()
+
         fitting_method_label=QLabel("Fitting Method:")
         self.fitting_method_edit=QComboBox()
-        self.fitting_method_edit.addItems(["Least squares","Gaussian(normal) distribution","Lorentzian distribution","Voigt distribution"])
+        self.fitting_method_edit.addItems(["Linear","Gaussian","Lorentzian","Voigt"])
         self.fitting_method_edit.currentIndexChanged.connect(self.disable_enable_interpolation)
         experiment_label=QLabel("Experiment:")
         self.experiment_edit=QComboBox()
         self.experiment_edit.addItems(["","Simple pendulum","Hooke's law"])
+
+        # will be used if we used custom fitting functions instead of the models
+        self.interval_start_edit = QLineEdit()
+        self.interval_start_edit.setPlaceholderText('Interval Start')
+        self.interval_end_edit = QLineEdit()
+        self.interval_end_edit.setPlaceholderText('Interval End')
+        self.section_length_edit = QLineEdit()
+        self.section_length_edit.setPlaceholderText('Section Length')
+        self.fitting_points_edit = QLineEdit()
+        self.fitting_points_edit.setPlaceholderText('Fitting Points (100 <= Points <= 1000)')
 
         # Create buttons for plot and interpolation
         plot_button = QPushButton("Plot")
@@ -86,12 +99,13 @@ class MainWindow(QMainWindow):
         # Create label for interpolation input
         self.interp_label = QLabel("Interpolation Value:")
         self.interp_edit = QLineEdit()
+        # When pressing enter button
         self.interp_edit.returnPressed.connect(self.interp_button.click)
 
         # Create slider for graph zoom
         self.slider=QSlider(Qt.Horizontal)
-        self.slider.setRange(1,1000)
-        self.slider.setValue(10)
+        self.slider.setRange(-10,1000)
+        self.slider.setValue(0)
         self.slider.valueChanged.connect(self.graph_draw_zoom)
 
         # Create figure canvas for plot output
@@ -104,26 +118,43 @@ class MainWindow(QMainWindow):
         self.grid_layout.addWidget(file_label, 0, 0)
         self.grid_layout.addWidget(self.file_edit, 0, 1, 1, 3)
         self.grid_layout.addWidget(file_button, 0, 4)
+
         self.grid_layout.addWidget(title_label, 1, 0)
         self.grid_layout.addWidget(self.title_edit, 1, 1, 1, 3)
+
         self.grid_layout.addWidget(xlabel_label, 2, 0)
         self.grid_layout.addWidget(self.xlabel_edit, 2, 1)
         self.grid_layout.addWidget(ylabel_label, 2, 2)
         self.grid_layout.addWidget(self.ylabel_edit, 2, 3)
+
         self.grid_layout.addWidget(fitting_method_label, 3, 0)
         self.grid_layout.addWidget(self.fitting_method_edit, 3, 1)
         self.grid_layout.addWidget(experiment_label, 3, 2)
         self.grid_layout.addWidget(self.experiment_edit, 3, 3)
-        self.grid_layout.addWidget(plot_button, 4, 0)
-        self.grid_layout.addWidget(self.interp_button, 4, 1)
-        self.grid_layout.addWidget(self.interp_label, 4, 2)
-        self.grid_layout.addWidget(self.interp_edit, 4, 3)
+
+        # will be used if we used custom fitting functions instead of the models
+        self.grid_layout.addWidget(self.interval_start_edit,4,0)
+        self.grid_layout.addWidget(self.interval_end_edit,4,1)
+        self.grid_layout.addWidget(self.section_length_edit,4,2)
+        self.grid_layout.addWidget(self.fitting_points_edit,4,3)
+        self.interval_start_edit.setEnabled(False)
+        self.interval_end_edit.setEnabled(False)
+        self.section_length_edit.setEnabled(False)
+        self.fitting_points_edit.setEnabled(False)
+
+        self.grid_layout.addWidget(plot_button, 5, 0)
+        self.grid_layout.addWidget(self.interp_button, 5, 1)
+        self.grid_layout.addWidget(self.interp_label, 5, 2)
+        self.grid_layout.addWidget(self.interp_edit, 5, 3)
+
         # Qt.AlignHCenter = Qt.AlignmentFlag.AlignHCenter
-        self.grid_layout.addWidget(self.result_label, 7, 0, 1, 5,Qt.AlignHCenter)
+        self.grid_layout.addWidget(self.result_label, 8, 0, 1, 5,Qt.AlignHCenter)
+
 
     def browse_file(self):
         # Open file dialog and get selected file path
         file_path,_= QFileDialog.getOpenFileName(self, "Open JSON or CSV File", path.join(self.app_dir,'data_sets'), "JSON or CSV Files (*.json  *.csv)")
+
         if file_path:
             file_ext = path.splitext(file_path)[1]
             # Read  file and set default input values
@@ -155,10 +186,16 @@ class MainWindow(QMainWindow):
             except KeyError:
                 self.ylabel_edit.setText("")
 
-
             try:
                 self.x = file['x']
                 self.y = file['y']
+                indexes = list(range(len(self.x)))
+                indexes.sort(key=self.x.__getitem__)
+                self.x=np.array(list(map(self.x.__getitem__,indexes)))
+                self.y=np.array(list(map(self.y.__getitem__,indexes)))
+                # those value values to restore x and y when errors happens
+                self.x_temp=self.x
+                self.y_temp=self.y
             except KeyError as error:
                 self.title_edit.setText("")
                 self.experiment_edit.setCurrentIndex(0)
@@ -170,6 +207,7 @@ class MainWindow(QMainWindow):
             self.n = len(self.x)
             self.file_edit.setText(file_path)
 
+
     def shared_plot(self,interp_value=None):
         # Get input values
         filename = self.file_edit.text()
@@ -178,31 +216,31 @@ class MainWindow(QMainWindow):
         title = self.title_edit.text()
         self.setWindowTitle(title)
 
-
         # Check if all input values are provided
         if not all([filename, xlabel, ylabel, title]):
             QMessageBox.warning(self, "Error", "Please provide all input values.")
             return
         experiment=self.select_fitting_method()
         self.result = f"{self.add_experiment_result()}"
+        self.x=self.x_temp
+        self.y=self.y_temp
         
-
         # Clear previous plot and draw new plot on canvas
         self.canvas.figure.clear()
         self.ax = self.canvas.figure.add_subplot(111)
-        self.ax.scatter(experiment.x, experiment.y,label="Before fitting")
-        self.ax.plot(experiment.x_smooth, experiment.y_fit,'r-',label=experiment.after_fitting_label)
+        self.ax.plot(experiment.x, experiment.y,'ro',markersize=2,label="Before fitting")
+        self.ax.plot(experiment.x_smooth, experiment.y_fit,'b',label=experiment.after_fitting_label)
         # Clear previous result label and write new text in it
         self.result_label.setText("")
         self.result_label.setStyleSheet("background:transparent;")
+
         # Plot cut part point
-        if(self.fitting_method_edit.currentText()=="Least squares"):
+        if(self.fitting_method_edit.currentText()=="Linear"):
             self.ax.plot(0, experiment.c, "h m")
-            self.ax.text(0, experiment.c, f"Cut point (0,{experiment.c:.4f})")
+            self.ax.text(0, experiment.c, f"Cut point (0,{experiment.c:.3f})")
             self.result_label.setStyleSheet("background:darkgreen;color:white;padding:5px 50px;font-size:16px;")
             self.result_label.setText(self.result)
 
-        
         self.min_x=min(*experiment.x,*experiment.x_smooth)
         self.max_x=max(*experiment.x,*experiment.x_smooth)
         self.min_y=min(*experiment.y,*experiment.y_fit)
@@ -213,27 +251,33 @@ class MainWindow(QMainWindow):
         self.ax.set_ylabel(ylabel)
         self.ax.set_title(title)
         self.ax.grid()
+
         if(interp_value != None):
 
-            y_iterp= experiment.newton2(interp_value)
+            y_interp= experiment.newton2(interp_value)
+            print(interp_value)
+            print(y_interp)
             # Plot interpolated/extrapolated point
-            self.ax.plot(interp_value, y_iterp, "s y")
+            self.ax.plot(interp_value, y_interp, "s y")
 
             # Determine if interpolated/extrapolated point is within plot range
-            if interp_value <= max(experiment.x) and interp_value >= min(experiment.x):
-                interpolation_text=f"The interpolated point is ({interp_value},{round(y_iterp,4)})"
-                self.ax.text(interp_value, y_iterp, f"Interpolation point ({interp_value},{y_iterp:.4f})")
+            interp_point=f"({interp_value},{y_interp:.3f})"
+            if min(experiment.x) <=interp_value <= max(experiment.x):
+                interpolation_text=f"The interpolated point is {interp_point}"
+                self.ax.text(interp_value, y_interp, f"Interpolation point {interp_point}")
             else:
-                interpolation_text=f"The extrapolated point is ({interp_value},{round(y_iterp,4)})"
-                self.ax.text(interp_value, y_iterp, f"Extrapolation point ({interp_value},{y_iterp:.4f})")
+                interpolation_text=f"The extrapolated point is {interp_point}"
+                self.ax.text(interp_value, y_interp, f"Extrapolation point {interp_point}")
             self.result = f"{self.result}\n{interpolation_text}"
             self.result_label.setText(self.result)
 
-        self.grid_layout.addWidget(self.slider, 5, 0, 1, 5)
+        self.grid_layout.addWidget(self.slider, 6, 0, 1, 5)
         self.graph_draw_zoom()
+
 
     def plot(self):
         self.shared_plot()
+
 
     # plot with interpolation
     def interpolate(self):
@@ -245,48 +289,59 @@ class MainWindow(QMainWindow):
             return
         self.shared_plot(interp_value)
 
+
     def disable_enable_interpolation(self):
-        if(self.fitting_method_edit.currentText()=="Least squares"):
+        if(self.fitting_method_edit.currentText()=="Linear"):
             self.interp_button.setEnabled(True)
             self.interp_edit.setEnabled(True)
+            self.interval_start_edit.setEnabled(False)
+            self.interval_end_edit.setEnabled(False)
+            self.section_length_edit.setEnabled(False)
+            self.fitting_points_edit.setEnabled(False)
         else:
             self.interp_button.setEnabled(False)
             self.interp_edit.setEnabled(False)
+            self.interval_start_edit.setEnabled(True)
+            self.interval_end_edit.setEnabled(True)
+            self.section_length_edit.setEnabled(True)
+            self.fitting_points_edit.setEnabled(True)
+
 
 
     def select_fitting_method(self):
         current_method = self.fitting_method_edit.currentText()
 
-        if current_method == "Least squares":
-            self.least_squares()    
-            self.after_fitting_label="Least squares fit"    
-            self.grid_layout.addWidget(self.canvas, 6, 0, 1, 5) 
+        if current_method == "Linear":
+            self.linear_fit()    
+            self.after_fitting_label="Linear fit"    
+            self.grid_layout.addWidget(self.canvas, 7, 0, 1, 5) 
         else:
-            self.grid_layout.addWidget(self.canvas, 6, 0, 2, 5)
-            if current_method == "Gaussian(normal) distribution":
-                self.fit_gaussian()
-                self.after_fitting_label="Gaussian fit"     
-            elif current_method == "Lorentzian distribution":
-                self.fit_lorentzian()
-                self.after_fitting_label="Lorentzian fit"     
-            elif current_method == "Voigt distribution":
-                self.fit_voigt()
-                self.after_fitting_label="Voigt fit"     
+            self.grid_layout.addWidget(self.canvas, 7, 0, 2, 5)
+            if current_method == "Gaussian":
+                self.gaussian_fit()
+            elif current_method == "Lorentzian":
+                self.lorentzian_fit()
+            elif current_method == "Voigt":
+                self.voigt_fit()
+            self.after_fitting_label="Peak fitting" 
 
         return self
-    
+
+
     def add_experiment_result(self):
         current_experiment=self.experiment_edit.currentText()
         result=""
-        if(self.fitting_method_edit.currentText()=="Least squares"):
+        if(self.fitting_method_edit.currentText()=="Linear"):
             if(current_experiment=="Simple pendulum"):
                 g = 4*(np.pi**2)/self.m
-                result=f"Slope = {self.m} s2/cm\nCut part = {self.c:.4f} s2\nEarth gravitational acceleration = {g} cm/s2"
+                result=f"Slope = {self.m} s2/cm\nCut part = {self.c:.3f} s2\nEarth gravitational acceleration = {g} cm/s2"
             elif(current_experiment=="Hooke's law"):
-                result=f"Slope = {self.m} s2/gm\nCut part = {self.c:.4f} cm"
+                result=f"Slope = {self.m} s2/gm\nCut part = {self.c:.3f} cm"
             else:
-                result=f"Slope = {self.m}\nCut part = {self.c:.4f}"
+                result=f"Slope = {self.m}\nCut part = {self.c:.3f}"
         return result
+
+
     def graph_draw_zoom(self):
         lim_percentage=self.slider.value()/100
         self.ax.set_xlim(self.min_x-(self.max_x-self.min_x)*lim_percentage, self.max_x+(self.max_x-self.min_x)*lim_percentage)
@@ -322,5 +377,6 @@ if __name__ == "__main__":
     combo_palette.setColor(QPalette.Highlight, QColor(0,255,0,100))
     window.fitting_method_edit.setPalette(combo_palette)
     window.experiment_edit.setPalette(combo_palette)
+
     window.show()
     sys.exit(app.exec_())

@@ -8,7 +8,7 @@ def linear_fit(self):
     # Least squares function
     self.m = (self.n*np.sum(self.x*self.y)-np.sum(self.x)*np.sum(self.y))/(self.n*np.sum(self.x**2)-np.sum(self.x)**2)
     self.c = (1/self.n)*(np.sum(self.y)-self.m*np.sum(self.x))
-    self.x_smooth = np.linspace(self.x.min(), self.x.max(), 300)
+    self.x_smooth = np.linspace(min(self.x.min(),0), self.x.max(), 300)
     self.y_fit = self.m*self.x_smooth+self.c
 
 # if we used the function below will give the same as above

@@ -3,6 +3,7 @@
 import sys
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QGridLayout, QWidget, QPushButton, QFileDialog, QLineEdit, QMessageBox,QComboBox,QSlider
 from PyQt5.QtGui import QIcon, QPalette, QColor,QCursor
 from PyQt5.QtCore import Qt
@@ -104,7 +105,7 @@ class MainWindow(QMainWindow):
 
         # Create slider for graph zoom
         self.slider=QSlider(Qt.Horizontal)
-        self.slider.setRange(-10,1000)
+        self.slider.setRange(0,1000)
         self.slider.setValue(0)
         self.slider.valueChanged.connect(self.graph_draw_zoom)
 
@@ -148,7 +149,7 @@ class MainWindow(QMainWindow):
         self.grid_layout.addWidget(self.interp_edit, 5, 3)
 
         # Qt.AlignHCenter = Qt.AlignmentFlag.AlignHCenter
-        self.grid_layout.addWidget(self.result_label, 8, 0, 1, 5,Qt.AlignHCenter)
+        self.grid_layout.addWidget(self.result_label, 9, 0, 1, 5,Qt.AlignHCenter)
 
 
     def browse_file(self):
@@ -228,7 +229,7 @@ class MainWindow(QMainWindow):
         # Clear previous plot and draw new plot on canvas
         self.canvas.figure.clear()
         self.ax = self.canvas.figure.add_subplot(111)
-        self.ax.plot(experiment.x, experiment.y,'ro',markersize=2,label="Before fitting")
+        self.ax.plot(experiment.x, experiment.y,'ro',markersize=3,label="Before fitting")
         self.ax.plot(experiment.x_smooth, experiment.y_fit,'b',label=experiment.after_fitting_label)
         # Clear previous result label and write new text in it
         self.result_label.setText("")
@@ -271,7 +272,6 @@ class MainWindow(QMainWindow):
             self.result = f"{self.result}\n{interpolation_text}"
             self.result_label.setText(self.result)
 
-        self.grid_layout.addWidget(self.slider, 6, 0, 1, 5)
         self.graph_draw_zoom()
 
 
@@ -314,9 +314,9 @@ class MainWindow(QMainWindow):
         if current_method == "Linear":
             self.linear_fit()    
             self.after_fitting_label="Linear fit"    
-            self.grid_layout.addWidget(self.canvas, 7, 0, 1, 5) 
+            self.grid_layout.addWidget(self.canvas, 8, 0, 1, 5) 
         else:
-            self.grid_layout.addWidget(self.canvas, 7, 0, 2, 5)
+            self.grid_layout.addWidget(self.canvas, 8, 0, 2, 5)
             if current_method == "Gaussian":
                 self.gaussian_fit()
             elif current_method == "Lorentzian":
@@ -346,6 +346,10 @@ class MainWindow(QMainWindow):
         lim_percentage=self.slider.value()/100
         self.ax.set_xlim(self.min_x-(self.max_x-self.min_x)*lim_percentage, self.max_x+(self.max_x-self.min_x)*lim_percentage)
         self.ax.set_ylim(self.min_y-(self.max_y-self.min_y)*lim_percentage, self.max_y+(self.max_y-self.min_y)*lim_percentage)
+
+        self.grid_layout.addWidget(self.slider, 6, 0, 1, 5)
+        self.toolbar = NavigationToolbar(self.canvas, self)
+        self.grid_layout.addWidget(self.toolbar, 7, 0, 1, 5)
         self.canvas.draw()
 
 

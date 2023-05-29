@@ -74,7 +74,9 @@ def __private_shared_fitting_body(self,model:Model):
         params=model.guess(self.y,x=self.x)
     result = model.fit(self.y,params,x=self.x)
     self.y_fit = result.eval(x=self.x_smooth)
-    self.peak_result = result.fit_report(show_correl=False,sort_pars=True).split('[[Variables]]')[-1]
+    self.peak_result=re.sub(r" (?=peak\d+_amplitude)","\n\n    ",result.fit_report(show_correl=False,sort_pars=True).split('[[Variables]]')[-1])
+    
+
 
 def gaussian(x, amplitude, mean, sigma):
     return amplitude * np.exp(-(x - mean) ** 2 / (2 * sigma ** 2))

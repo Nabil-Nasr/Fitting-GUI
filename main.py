@@ -4,7 +4,7 @@ import sys
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QGridLayout, QWidget, QPushButton, QFileDialog, QLineEdit, QMessageBox,QComboBox,QSlider
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QGridLayout, QWidget, QPushButton, QFileDialog, QLineEdit, QMessageBox,QComboBox,QSlider,QScrollArea
 from PyQt5.QtGui import QIcon, QPalette, QColor,QCursor
 from PyQt5.QtCore import Qt
 from fitting_functions import *
@@ -81,14 +81,14 @@ class MainWindow(QMainWindow):
         self.experiment_edit.addItems(["","Simple pendulum","Hooke's law"])
 
         # will be used if we used custom fitting functions instead of the models
-        self.interval_start_edit = QLineEdit()
-        self.interval_start_edit.setPlaceholderText('Interval Start')
-        self.interval_end_edit = QLineEdit()
-        self.interval_end_edit.setPlaceholderText('Interval End')
-        self.section_length_edit = QLineEdit()
-        self.section_length_edit.setPlaceholderText('Section Length')
-        self.fitting_points_edit = QLineEdit()
-        self.fitting_points_edit.setPlaceholderText('Fitting Points (100 <= Points <= 1000)')
+        self.start_end_xsmooth_edit = QLineEdit()
+        self.start_end_xsmooth_edit.setPlaceholderText('Start,End,X_Smooth')
+        self.amplitude_edit = QLineEdit()
+        self.amplitude_edit.setPlaceholderText('Amplitude')
+        self.center_edit = QLineEdit()
+        self.center_edit.setPlaceholderText('Center')
+        self.sigma_edit = QLineEdit()
+        self.sigma_edit.setPlaceholderText('Sigma')
 
         # Create buttons for plot and interpolation
         plot_button = QPushButton("Plot")
@@ -114,6 +114,9 @@ class MainWindow(QMainWindow):
 
         # Create label for results
         self.result_label = QLabel()
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setWidget(self.result_label)
 
         # Add widgets to grid layout
         self.grid_layout.addWidget(file_label, 0, 0)
@@ -134,22 +137,21 @@ class MainWindow(QMainWindow):
         self.grid_layout.addWidget(self.experiment_edit, 3, 3)
 
         # will be used if we used custom fitting functions instead of the models
-        self.grid_layout.addWidget(self.interval_start_edit,4,0)
-        self.grid_layout.addWidget(self.interval_end_edit,4,1)
-        self.grid_layout.addWidget(self.section_length_edit,4,2)
-        self.grid_layout.addWidget(self.fitting_points_edit,4,3)
-        self.interval_start_edit.setEnabled(False)
-        self.interval_end_edit.setEnabled(False)
-        self.section_length_edit.setEnabled(False)
-        self.fitting_points_edit.setEnabled(False)
+        self.grid_layout.addWidget(self.start_end_xsmooth_edit,4,0)
+        self.grid_layout.addWidget(self.amplitude_edit,4,1)
+        self.grid_layout.addWidget(self.center_edit,4,2)
+        self.grid_layout.addWidget(self.sigma_edit,4,3)
+        self.start_end_xsmooth_edit.setEnabled(False)
+        self.amplitude_edit.setEnabled(False)
+        self.center_edit.setEnabled(False)
+        self.sigma_edit.setEnabled(False)
 
         self.grid_layout.addWidget(plot_button, 5, 0)
         self.grid_layout.addWidget(self.interp_button, 5, 1)
         self.grid_layout.addWidget(self.interp_label, 5, 2)
         self.grid_layout.addWidget(self.interp_edit, 5, 3)
 
-        # Qt.AlignHCenter = Qt.AlignmentFlag.AlignHCenter
-        self.grid_layout.addWidget(self.result_label, 9, 0, 1, 5,Qt.AlignHCenter)
+        self.grid_layout.addWidget(self.scroll_area, 9, 0, 1, 5)
 
 
     def browse_file(self):
@@ -231,16 +233,16 @@ class MainWindow(QMainWindow):
         self.ax = self.canvas.figure.add_subplot(111)
         self.ax.plot(experiment.x, experiment.y,'ro',markersize=3,label="Before fitting")
         self.ax.plot(experiment.x_smooth, experiment.y_fit,'b',label=experiment.after_fitting_label)
-        # Clear previous result label and write new text in it
-        self.result_label.setText("")
-        self.result_label.setStyleSheet("background:transparent;")
 
         # Plot cut part point
         if(self.fitting_method_edit.currentText()=="Linear"):
             self.ax.plot(0, experiment.c, "h m")
             self.ax.text(0, experiment.c, f"Cut point (0,{experiment.c:.3f})")
-            self.result_label.setStyleSheet("background:darkgreen;color:white;padding:5px 50px;font-size:16px;")
             self.result_label.setText(self.result)
+            self.result_label.setStyleSheet("background:darkgreen;color:white;padding:5px 50px;font-size:16px;")
+        else:
+            self.result_label.setText(self.peak_result)
+            self.result_label.setStyleSheet("background:darkgreen;color:white;padding:5px;font-size:16px;")
 
         self.min_x=min(*experiment.x,*experiment.x_smooth)
         self.max_x=max(*experiment.x,*experiment.x_smooth)
@@ -294,17 +296,17 @@ class MainWindow(QMainWindow):
         if(self.fitting_method_edit.currentText()=="Linear"):
             self.interp_button.setEnabled(True)
             self.interp_edit.setEnabled(True)
-            self.interval_start_edit.setEnabled(False)
-            self.interval_end_edit.setEnabled(False)
-            self.section_length_edit.setEnabled(False)
-            self.fitting_points_edit.setEnabled(False)
+            self.start_end_xsmooth_edit.setEnabled(False)
+            self.amplitude_edit.setEnabled(False)
+            self.center_edit.setEnabled(False)
+            self.sigma_edit.setEnabled(False)
         else:
             self.interp_button.setEnabled(False)
             self.interp_edit.setEnabled(False)
-            self.interval_start_edit.setEnabled(True)
-            self.interval_end_edit.setEnabled(True)
-            self.section_length_edit.setEnabled(True)
-            self.fitting_points_edit.setEnabled(True)
+            self.start_end_xsmooth_edit.setEnabled(True)
+            self.amplitude_edit.setEnabled(True)
+            self.center_edit.setEnabled(True)
+            self.sigma_edit.setEnabled(True)
 
 
 
@@ -313,10 +315,14 @@ class MainWindow(QMainWindow):
 
         if current_method == "Linear":
             self.linear_fit()    
-            self.after_fitting_label="Linear fit"    
-            self.grid_layout.addWidget(self.canvas, 8, 0, 1, 5) 
+            self.after_fitting_label="Linear fit"
+            self.grid_layout.removeWidget(self.scroll_area)
+            self.grid_layout.addWidget(self.canvas, 8, 0, 1, 5)
+            self.grid_layout.addWidget(self.scroll_area, 9, 0, 1, 5)
         else:
-            self.grid_layout.addWidget(self.canvas, 8, 0, 2, 5)
+            self.grid_layout.removeWidget(self.scroll_area)
+            self.grid_layout.addWidget(self.canvas, 8, 0, 2, 3)
+            self.grid_layout.addWidget(self.scroll_area, 8, 3, 2, 2)
             if current_method == "Gaussian":
                 self.gaussian_fit()
             elif current_method == "Lorentzian":
@@ -349,6 +355,7 @@ class MainWindow(QMainWindow):
 
         self.grid_layout.addWidget(self.slider, 6, 0, 1, 5)
         self.toolbar = NavigationToolbar(self.canvas, self)
+        self.toolbar.locLabel.setStyleSheet("color:initial")
         self.grid_layout.addWidget(self.toolbar, 7, 0, 1, 5)
         self.canvas.draw()
 

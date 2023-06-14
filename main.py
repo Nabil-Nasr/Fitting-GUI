@@ -257,7 +257,7 @@ class MainWindow(QMainWindow):
 
         if(interp_value != None):
 
-            y_interp= experiment.newton2(interp_value)
+            y_interp= experiment.newton1(interp_value)
             print(interp_value)
             print(y_interp)
             # Plot interpolated/extrapolated point
@@ -315,7 +315,7 @@ class MainWindow(QMainWindow):
 
         if current_method == "Linear":
             self.linear_fit()    
-            self.after_fitting_label="Linear fit"
+            self.after_fitting_label="Linear fitting"
             self.grid_layout.removeWidget(self.scroll_area)
             self.grid_layout.addWidget(self.canvas, 8, 0, 1, 5)
             self.grid_layout.addWidget(self.scroll_area, 9, 0, 1, 5)

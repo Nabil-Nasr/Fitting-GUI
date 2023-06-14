@@ -1,7 +1,5 @@
 x,y,xlabel,ylabel,title
--10.0,1.2,title,xlabel,ylabel
--9.0,4.2
--8.0,6.7
+-8.33,7,xlabel,ylabel,One Peak
 -7.0,8.3
 -6.0,10.6
 -5.0,11.7
@@ -17,6 +15,4 @@ x,y,xlabel,ylabel,title
 5.0,12.7
 6.0,10.3
 7.0,8.6
-8.0,6.1
-9.0,3.9
-10.0,2.1
+8.44,6.84

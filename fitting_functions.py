@@ -1,5 +1,5 @@
 import numpy as np
-from lmfit.models import Model,VoigtModel,LorentzianModel,GaussianModel,LinearModel
+from lmfit.models import Model,VoigtModel,LorentzianModel,GaussianModel
 from scipy.optimize import curve_fit
 from scipy.special import wofz
 import re
@@ -88,8 +88,8 @@ def gaussian_fit(self):
     __private_shared_fitting_body(self,model)
 
 
-def lorentzian(x, amplitude, mean, sigma):
-    return (amplitude * sigma**2) / ((x - mean)**2 + sigma**2)
+# def lorentzian(x, amplitude, mean, sigma):
+#     return (amplitude * sigma**2) / ((x - mean)**2 + sigma**2)
 
 def lorentzian_fit(self):
     # Fit Lorentzian distribution

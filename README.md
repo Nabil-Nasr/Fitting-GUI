@@ -1,1 +1,2 @@
-# For installing required packages (pip install -r requirements.txt)
+# For downloading the project click this =><a href="https://github.com/Nabil-Nasr/Fitting-GUI/archive/refs/heads/main.zip">Download</a>
+# For installing required packages open the project main folder and run the following line in the terminal (pip install -r requirements.txt)

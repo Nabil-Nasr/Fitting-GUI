@@ -76,7 +76,7 @@ class MainWindow(QMainWindow):
         self.fitting_method_edit=QComboBox()
         self.fitting_method_edit.addItems(["Linear","Gaussian","Lorentzian","Voigt"])
         self.fitting_method_edit.currentIndexChanged.connect(self.disable_enable_interpolation)
-        experiment_label=QLabel("Experiment:")
+        experiment_label=QLabel("Preset:")
         self.experiment_edit=QComboBox()
         self.experiment_edit.addItems(["","Simple pendulum","Hooke's law"])
 
@@ -211,7 +211,7 @@ class MainWindow(QMainWindow):
             self.file_edit.setText(file_path)
 
 
-    def shared_plot(self,interp_value=None):
+    def shared_plot(self):
         # Get input values
         filename = self.file_edit.text()
         xlabel = self.xlabel_edit.text()
@@ -255,30 +255,10 @@ class MainWindow(QMainWindow):
         self.ax.set_title(title)
         self.ax.grid()
 
-        if(interp_value != None):
-
-            y_interp= experiment.newton1(interp_value)
-            print(interp_value)
-            print(y_interp)
-            # Plot interpolated/extrapolated point
-            self.ax.plot(interp_value, y_interp, "s y")
-
-            # Determine if interpolated/extrapolated point is within plot range
-            interp_point=f"({interp_value},{y_interp:.3f})"
-            if min(experiment.x) <=interp_value <= max(experiment.x):
-                interpolation_text=f"The interpolated point is {interp_point}"
-                self.ax.text(interp_value, y_interp, f"Interpolation point {interp_point}")
-            else:
-                interpolation_text=f"The extrapolated point is {interp_point}"
-                self.ax.text(interp_value, y_interp, f"Extrapolation point {interp_point}")
-            self.result = f"{self.result}\n{interpolation_text}"
-            self.result_label.setText(self.result)
-
-        self.graph_draw_zoom()
-
 
     def plot(self):
         self.shared_plot()
+        self.graph_draw_zoom()
 
 
     # plot with interpolation
@@ -289,7 +269,25 @@ class MainWindow(QMainWindow):
         except ValueError:
             QMessageBox.warning(self, "Error", "Please provide a valid interpolation value.")
             return
-        self.shared_plot(interp_value)
+        self.shared_plot()
+        
+        experiment=self
+        y_interp= experiment.newton1(interp_value)
+        # Plot interpolated/extrapolated point
+        self.ax.plot(interp_value, y_interp, "s y")
+
+        # Determine if interpolated/extrapolated point is within plot range
+        interp_point=f"({interp_value},{y_interp:.3f})"
+        if min(experiment.x) <=interp_value <= max(experiment.x):
+            interpolation_text=f"The interpolated point is {interp_point}"
+            self.ax.text(interp_value, y_interp, f"Interpolation point {interp_point}")
+        else:
+            interpolation_text=f"The extrapolated point is {interp_point}"
+            self.ax.text(interp_value, y_interp, f"Extrapolation point {interp_point}")
+        self.result = f"{self.result}\n{interpolation_text}"
+        self.result_label.setText(self.result)
+
+        self.graph_draw_zoom()
 
 
     def disable_enable_interpolation(self):

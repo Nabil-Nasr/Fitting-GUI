@@ -31,7 +31,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Fitting")
         self.setStyleSheet("""
         *{
-            font-size:16px;
+            font-size:20px;
+            font-family:arial;
         }
         QPushButton:disabled{
             background-color:grey;
@@ -43,10 +44,13 @@ class MainWindow(QMainWindow):
             background:rgb(245,245,245);
         }
         QPushButton::hover{
-        background:green
+            background:green;
         }
-
+        QPushButton,QLineEdit,QComboBox{
+            padding:5px 10px;
+        }
         """)
+        self.font_size=16
 
         self.setWindowIcon(QIcon(path.join(self.app_dir,'assets','icon.png')))
         self.setGeometry(100, 100, 800, 720)
@@ -231,7 +235,8 @@ class MainWindow(QMainWindow):
         # Clear previous plot and draw new plot on canvas
         self.canvas.figure.clear()
         self.ax = self.canvas.figure.add_subplot(111)
-        self.ax.plot(experiment.x, experiment.y,'ro',markersize=3,label="Before fitting")
+        self.ax.tick_params(axis='both', which='major', labelsize=self.font_size-4)
+        self.ax.plot(experiment.x, experiment.y,'ro',markersize=5,label="Before fitting",)
         self.ax.plot(experiment.x_smooth, experiment.y_fit,'b',label=experiment.after_fitting_label)
 
         # Plot cut part point
@@ -239,10 +244,10 @@ class MainWindow(QMainWindow):
             self.ax.plot(0, experiment.c, "h m")
             self.ax.text(0, experiment.c, f"Cut point (0,{experiment.c:.3f})")
             self.result_label.setText(self.result)
-            self.result_label.setStyleSheet("background:darkgreen;color:white;padding:5px 50px;font-size:16px;")
+            self.result_label.setStyleSheet("background:darkgreen;color:white;padding:5px 50px;")
         else:
             self.result_label.setText(self.peak_result)
-            self.result_label.setStyleSheet("background:darkgreen;color:white;padding:5px;font-size:16px;")
+            self.result_label.setStyleSheet("background:darkgreen;color:white;padding:5px;")
 
         self.min_x=min(*experiment.x,*experiment.x_smooth)
         self.max_x=max(*experiment.x,*experiment.x_smooth)
@@ -250,9 +255,9 @@ class MainWindow(QMainWindow):
         self.max_y=max(*experiment.y,*experiment.y_fit)
 
         self.ax.legend(loc="best")
-        self.ax.set_xlabel(xlabel)
-        self.ax.set_ylabel(ylabel)
-        self.ax.set_title(title)
+        self.ax.set_xlabel(xlabel,fontsize=self.font_size)
+        self.ax.set_ylabel(ylabel,fontsize=self.font_size)
+        self.ax.set_title(title,fontsize=self.font_size)
         self.ax.grid()
 
 

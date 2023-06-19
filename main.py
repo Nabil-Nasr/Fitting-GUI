@@ -114,6 +114,7 @@ class MainWindow(QMainWindow):
         self.slider.valueChanged.connect(self.graph_draw_zoom)
 
         # Create figure canvas for plot output
+        self.toolbar=None
         self.canvas = FigureCanvas(plt.Figure())
 
         # Create label for results
@@ -236,7 +237,7 @@ class MainWindow(QMainWindow):
         self.canvas.figure.clear()
         self.ax = self.canvas.figure.add_subplot(111)
         self.ax.tick_params(axis='both', which='major', labelsize=self.font_size-4)
-        self.ax.plot(experiment.x, experiment.y,'ro',markersize=5,label="Before fitting",)
+        self.ax.plot(experiment.x, experiment.y,'ro',markersize=5,label="Before fitting")
         self.ax.plot(experiment.x_smooth, experiment.y_fit,'b',label=experiment.after_fitting_label)
 
         # Plot cut part point
@@ -355,11 +356,13 @@ class MainWindow(QMainWindow):
         lim_percentage=self.slider.value()/100
         self.ax.set_xlim(self.min_x-(self.max_x-self.min_x)*lim_percentage, self.max_x+(self.max_x-self.min_x)*lim_percentage)
         self.ax.set_ylim(self.min_y-(self.max_y-self.min_y)*lim_percentage, self.max_y+(self.max_y-self.min_y)*lim_percentage)
-
+        
+        self.grid_layout.removeWidget(self.slider)
         self.grid_layout.addWidget(self.slider, 6, 0, 1, 5)
-        self.toolbar = NavigationToolbar(self.canvas, self)
-        self.toolbar.locLabel.setStyleSheet("color:initial")
-        self.grid_layout.addWidget(self.toolbar, 7, 0, 1, 5)
+        if(self.toolbar==None):
+            self.toolbar = NavigationToolbar(self.canvas, self)
+            self.toolbar.locLabel.setStyleSheet("color:initial")
+            self.grid_layout.addWidget(self.toolbar, 7, 0, 1, 5)
         self.canvas.draw()
 
 
